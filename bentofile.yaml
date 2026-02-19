@@ -1,4 +1,4 @@
-service: "src.service:svc"
+service: "src.service:RFClassifierService"
 description: "Service de prédiction d'admission"
 labels:
   owner: "DataScientest"
@@ -11,7 +11,7 @@ models:
 python:
   packages:
     - bentoml==1.4.35
-    - scikit-learn==1.3.2
+    - scikit-learn==1.8.0
     - pandas==2.3.3
-    - pydantic==2.12.1
+    - pydantic==2.11.7
     - pyjwt==2.10.1

@@ -30,6 +30,8 @@ Bon travail!
 # 1.1. Préparation de l'environnement de travail
 curl -O https://assets-datascientest.s3.eu-west-1.amazonaws.com/MLOPS/bentoml/admission.csv
 
+uv init 
+
 ### Création de l'environnement virtuel
 
 uv venv .venv
@@ -37,15 +39,24 @@ source .venv/bin/activate
 
 # 1.2. Création du modèle
 
-uv pip install pandas numpy scikit-learn
+uv pip install pandas numpy scikit-learn bentoml PyJWT
+uv pip install pytest
+uv add pytest
+uv add pydantic==2.11.7
 
-uv pip install bentoml
+## création du requirements.txt
+python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']))" > requirements.txt
+
+# 
+
+
+mv /Users/samuelbeau/Atelier/Datascientest/BentoML/BentoML_exam/bentoml/* ~/bentoml/
 
 export BENTOML_HOME="/Users/samuelbeau/Atelier/Datascientest/BentoML/BentoML_exam/bentoml"
 
 # 1.3. Mise en place de l'API de prédiction
 
-uv pip install PyJWT
+
 
 PORT ?= 3001
 SERVICE ?= src.service:RFClassifierService
@@ -57,7 +68,21 @@ uv run bentoml serve src.service:RFClassifierService --port 3001
 
 # 1.4. Création d'un bento & conteneurisation avec Docker
 
+uv run bentoml build
 
+(.venv) samuelbeau@macbookair examen_bentoml % bentoml list
+ Tag                                     Size       Model Size  Creation Time       
+ rf_classifier_service:6izqvfan4cebilio  46.10 KiB  77.36 KiB   2026-02-19 23:18:41 
+
+bentoml containerize rf_classifier_service:6izqvfan4cebilio
+
+# Test curl
+
+curl -s -X POST "http://127.0.0.1:3000/predict" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwiZXhwIjoxNzcxNTQ0MjM1fQ._cfMq0jIoAFJEam37jqFFmzvxKNHeH3w2V1u6_f2ICM" \
+    -d '{"input_data": {"Serial_No": 362, "GRE_Score": 334, "TOEFL_Score": 116, "University_Rating": 4, "SOP": 4.0, "LOR": 3.5, "CGPA": 9.54, "Research": 1}}'; \
+echo
 
 # 1.5. Tests unitaires
 
