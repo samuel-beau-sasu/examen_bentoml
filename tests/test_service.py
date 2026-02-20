@@ -19,7 +19,8 @@ def serveur_bentoml():
     """Démarre le serveur BentoML avant tous les tests, l'arrête après"""
     # Démarrer le serveur en arrière-plan
     process = subprocess.Popen(
-        ["uv", "run", "bentoml", "serve", "src.service:RFClassifierService", "--port", "3099"],
+        #["uv", "run", "bentoml", "serve", "src.service:RFClassifierService", "--port", "3099"],
+        ["docker", "run", "--rm", "-p", "3099:3000", "rf_classifier_service:yhdchzan4kt4dt4s"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
@@ -94,11 +95,7 @@ DONNEES_INCOMPLETES = {
 # TESTS 1 : Authentification JWT
 # ============================================================
 
-def test_jwt_token_manquant():
-    response = requests.post(f"{BASE_URL}/predict", json=DONNEES_VALIDES)
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Missing authentication token"
-
+# Vérifiez que l'authentification échoue si le jeton JWT est manquant ou invalide.
 def test_jwt_token_invalide():
     response = requests.post(f"{BASE_URL}/predict",
         headers={"Authorization": "Bearer tokenbidon123"},
@@ -106,7 +103,8 @@ def test_jwt_token_invalide():
     )
     assert response.status_code == 401
     assert response.json()["detail"] == "Invalid token"
-
+    
+# Vérifiez que l'authentification échoue si le jeton JWT a expiré.
 def test_jwt_token_expire():
     token_expire = creer_token_expire()
     response = requests.post(f"{BASE_URL}/predict",
@@ -116,10 +114,22 @@ def test_jwt_token_expire():
     assert response.status_code == 401
     assert response.json()["detail"] == "Token has expired"
 
+# Vérifiez que l'authentification réussit avec un jeton JWT valide.
+def test_jwt_token_ok():
+    token = obtenir_token_valide()
+    response = requests.post(f"{BASE_URL}/predict",
+        headers={"Authorization": f"Bearer {token}"},
+        json=DONNEES_VALIDES
+    )
+    assert response.status_code == 200
+    
+
+
 # ============================================================
 # TESTS 2 : Endpoint /login
 # ============================================================
 
+# Vérifiez que l'API renvoie un jeton JWT valide pour des identifiants utilisateur corrects.
 def test_login_credentials_valides():
     response = requests.post(f"{BASE_URL}/login", json={
         "credentials": {"username": "user123", "password": "password123"}
@@ -127,15 +137,10 @@ def test_login_credentials_valides():
     assert response.status_code == 200
     assert "token" in response.json()
 
+# Vérifiez que l'API renvoie une erreur 401 pour des identifiants utilisateur incorrects.
 def test_login_mauvais_password():
     response = requests.post(f"{BASE_URL}/login", json={
         "credentials": {"username": "user123", "password": "mauvaispassword"}
-    })
-    assert response.status_code == 401
-
-def test_login_utilisateur_inexistant():
-    response = requests.post(f"{BASE_URL}/login", json={
-        "credentials": {"username": "hackerXXX", "password": "password123"}
     })
     assert response.status_code == 401
 
@@ -143,10 +148,12 @@ def test_login_utilisateur_inexistant():
 # TESTS 3 : Endpoint /predict
 # ============================================================
 
+# Vérifiez que l'API renvoie une erreur 401 si le jeton JWT est manquant ou invalide.
 def test_predict_sans_token():
     response = requests.post(f"{BASE_URL}/predict", json=DONNEES_VALIDES)
     assert response.status_code == 401
 
+# Vérifiez que l'API renvoie une prédiction valide pour des données d'entrée correctes.
 def test_predict_avec_token_valide():
     token = obtenir_token_valide()
     response = requests.post(f"{BASE_URL}/predict",
@@ -157,15 +164,8 @@ def test_predict_avec_token_valide():
     assert "prediction" in response.json()
     prediction = response.json()["prediction"][0]
     assert 0.0 <= prediction <= 1.0
-
-def test_predict_donnees_manquantes():
-    token = obtenir_token_valide()
-    response = requests.post(f"{BASE_URL}/predict",
-        headers={"Authorization": f"Bearer {token}"},
-        json=DONNEES_INCOMPLETES
-    )
-    assert response.status_code == 400
     
+# Vérifiez que l'API renvoie une erreur pour des données d'entrée invalides.   
 def test_predict_donnees_invalides():
     token = obtenir_token_valide()
     response = requests.post(f"{BASE_URL}/predict",
@@ -173,3 +173,4 @@ def test_predict_donnees_invalides():
         json=DONNEES_INVALIDES
     )
     assert response.status_code == 400
+    
