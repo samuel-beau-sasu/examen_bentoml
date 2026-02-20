@@ -65,7 +65,19 @@ class RFModelService:
         pred = self.model.predict(x)
         return pred.tolist()
 
-@bentoml.service
+@bentoml.service(
+    # Dire à Swagger qu'on utilise Bearer JWT
+    http={
+        "security_schemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        },
+        "security": [{"BearerAuth": []}]
+    }
+)
 class RFClassifierService:
     model_service = bentoml.depends(RFModelService)
 
@@ -79,11 +91,11 @@ class RFClassifierService:
     @bentoml.api(route="/predict")
     def predict(self, input_data: InputModel):
         features = [
-            input_data.Serial_No, input_data.GRE_Score, input_data.TOEFL_Score, input_data.University_Rating,
-            input_data.SOP, input_data.LOR, input_data.CGPA, input_data.Research,
+            input_data.Serial_No, input_data.GRE_Score, input_data.TOEFL_Score,
+            input_data.University_Rating, input_data.SOP, input_data.LOR,
+            input_data.CGPA, input_data.Research,
         ]
         pred = self.model_service.predict_array(features)
         return {"prediction": pred}
 
-# Appliquer le middleware sur tout le service
 RFClassifierService.add_asgi_middleware(JWTAuthMiddleware)
